@@ -1,0 +1,7 @@
+{
+  "name": "SaruOS サンプルゲーム",
+  "exec": "sample_game",
+  "resolution": "1280x720",
+  "controller_required": true,
+  "version": "1.0.0"
+}

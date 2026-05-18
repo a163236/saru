@@ -1,0 +1,12 @@
+# Rust
+/target/
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS temporary files
+.DS_Store
+Thumbs.db

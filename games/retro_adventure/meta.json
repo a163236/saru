@@ -1,0 +1,7 @@
+{
+  "name": "レトロアドベンチャー",
+  "exec": "retro_adventure",
+  "resolution": "1280x720",
+  "controller_required": true,
+  "version": "1.0.2"
+}

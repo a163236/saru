@@ -1,0 +1,10 @@
+[package]
+name = "launcher"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+runtime = { path = "../runtime" }
+sdl3 = { version = "0.18.4", features = ["build-from-source"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
