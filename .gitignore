@@ -10,3 +10,6 @@
 # OS temporary files
 .DS_Store
 Thumbs.db
+
+# Game Save files
+highscore.txt

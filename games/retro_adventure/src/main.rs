@@ -16,6 +16,215 @@ struct Enemy {
     speed: f32,
 }
 
+fn draw_char(x: i32, y: i32, c: char, pixel_size: i32, r: u8, g: u8, b: u8) {
+    let pattern = match c {
+        '0' => "###\
+                #.#\
+                #.#\
+                #.#\
+                ###",
+        '1' => "..#\
+                ..#\
+                ..#\
+                ..#\
+                ..#",
+        '2' => "###\
+                ..#\
+                ###\
+                #..\
+                ###",
+        '3' => "###\
+                ..#\
+                ###\
+                ..#\
+                ###",
+        '4' => "#.#\
+                #.#\
+                ###\
+                ..#\
+                ..#",
+        '5' => "###\
+                #..\
+                ###\
+                ..#\
+                ###",
+        '6' => "###\
+                #..\
+                ###\
+                #.#\
+                ###",
+        '7' => "###\
+                ..#\
+                ..#\
+                ..#\
+                ..#",
+        '8' => "###\
+                #.#\
+                ###\
+                #.#\
+                ###",
+        '9' => "###\
+                #.#\
+                ###\
+                ..#\
+                ###",
+        'S' => "###\
+                #..\
+                ###\
+                ..#\
+                ###",
+        'C' => "###\
+                #..\
+                #..\
+                #..\
+                ###",
+        'O' => "###\
+                #.#\
+                #.#\
+                #.#\
+                ###",
+        'R' => "###\
+                #.#\
+                ###\
+                #.#\
+                #.#",
+        'E' => "###\
+                #..\
+                ###\
+                #..\
+                ###",
+        'P' => "###\
+                #.#\
+                ###\
+                #..\
+                #..",
+        'L' => "#..\
+                #..\
+                #..\
+                #..\
+                ###",
+        'A' => "###\
+                #.#\
+                ###\
+                #.#\
+                #.#",
+        'Y' => "#.#\
+                #.#\
+                ###\
+                ..#\
+                ..#",
+        'G' => "###\
+                #..\
+                #.#\
+                #.#\
+                ###",
+        'I' => "###\
+                .#.\
+                .#.\
+                .#.\
+                ###",
+        'N' => "#.#\
+                ###\
+                ###\
+                #.#\
+                #.#",
+        'M' => "###\
+                ###\
+                #.#\
+                #.#\
+                #.#",
+        'V' => "#.#\
+                #.#\
+                #.#\
+                #.#\
+                .#.",
+        'H' => "#.#\
+                #.#\
+                ###\
+                #.#\
+                #.#",
+        'T' => "###\
+                .#.\
+                .#.\
+                .#.\
+                .#.",
+        'U' => "#.#\
+                #.#\
+                #.#\
+                #.#\
+                ###",
+        'W' => "#.#\
+                #.#\
+                #.#\
+                ###\
+                ###",
+        'X' => "#.#\
+                #.#\
+                .#.\
+                #.#\
+                #.#",
+        'F' => "###\
+                #..\
+                ###\
+                #..\
+                #..",
+        ':' => "...\
+                .#.\
+                ...\
+                .#.\
+                ...",
+        '-' => "...\
+                ...\
+                ###\
+                ...\
+                ...",
+        ' ' => "...\
+                ...\
+                ...\
+                ...\
+                ...",
+        _ =>   "###\
+                #.#\
+                ###\
+                #.#\
+                #.#",
+    };
+
+    for (idx, ch) in pattern.chars().enumerate() {
+        if ch == '#' {
+            let px = idx % 3;
+            let py = idx / 3;
+            runtime_draw_rect(
+                x + px as i32 * pixel_size,
+                y + py as i32 * pixel_size,
+                pixel_size as u32,
+                pixel_size as u32,
+                r, g, b
+            );
+        }
+    }
+}
+
+fn draw_string(mut x: i32, y: i32, text: &str, pixel_size: i32, r: u8, g: u8, b: u8) {
+    for c in text.chars() {
+        draw_char(x, y, c, pixel_size, r, g, b);
+        x += 4 * pixel_size;
+    }
+}
+
+fn load_highscore() -> u32 {
+    if let Ok(content) = std::fs::read_to_string("highscore.txt") {
+        if let Ok(score) = content.trim().parse::<u32>() {
+            return score;
+        }
+    }
+    0
+}
+
+fn save_highscore(score: u32) {
+    let _ = std::fs::write("highscore.txt", score.to_string());
+}
+
 fn main() {
     println!("=== レトロアドベンチャー (Space Shooter) 起動 ===");
     runtime_init();
@@ -26,6 +235,7 @@ fn main() {
     let mut hp: u32 = 5;
     let max_hp: u32 = 5;
     let mut score = 0;
+    let mut highscore = load_highscore();
     let mut shoot_cooldown = 0.0f32;
     let mut damage_flash = 0.0f32;
 
@@ -127,7 +337,10 @@ fn main() {
             if damaged_by_escape > 0 {
                 hp = hp.saturating_sub(damaged_by_escape);
                 damage_flash = 0.2;
-                if hp == 0 { is_gameover = true; }
+                if hp == 0 {
+                    is_gameover = true;
+                    save_highscore(highscore);
+                }
             }
 
             let mut hit_bullets = std::collections::HashSet::new();
@@ -137,11 +350,14 @@ fn main() {
                 for (e_idx, enemy) in enemies.iter().enumerate() {
                     if bullet.x < enemy.x + 40.0 &&
                        bullet.x + 15.0 > enemy.x &&
-                       bullet.y < enemy.y + 24.0 &&
-                       bullet.y + 6.0 > enemy.y {
+                       bullet.y < enemy.y + 30.0 &&
+                       bullet.y + 6.0 > enemy.y - 8.0 {
                         hit_bullets.insert(b_idx);
                         hit_enemies.insert(e_idx);
                         score += 100;
+                        if score > highscore {
+                            highscore = score;
+                        }
                     }
                 }
             }
@@ -164,8 +380,8 @@ fn main() {
             for (e_idx, enemy) in enemies.iter().enumerate() {
                 if px < enemy.x + 40.0 &&
                    px + 40.0 > enemy.x &&
-                   py < enemy.y + 24.0 &&
-                   py + 40.0 > enemy.y {
+                   py < enemy.y + 30.0 &&
+                   py + 40.0 > enemy.y - 8.0 {
                     hit_player_enemy_idx = Some(e_idx);
                     break;
                 }
@@ -177,6 +393,7 @@ fn main() {
                 damage_flash = 0.3;
                 if hp == 0 {
                     is_gameover = true;
+                    save_highscore(highscore);
                 }
             }
 
@@ -228,6 +445,13 @@ fn main() {
         runtime_draw_rect(40, 30, 600, 2, 50, 70, 90);
         runtime_draw_rect(40, 50, 600, 2, 50, 70, 90);
 
+        // Score displays next to the score bar
+        draw_string(660, 18, &format!("HI-SCORE:{:06}", highscore), 3, 255, 220, 0);
+        draw_string(660, 45, &format!("SCORE:   {:06}", score), 3, 0, 220, 255);
+
+        // HP Label before hearts
+        draw_string(930, 30, "HP:", 4, 50, 255, 50);
+
         for h in 0..max_hp {
             let hx = 1000 + (h * 45) as i32;
             if h < hp {
@@ -246,15 +470,26 @@ fn main() {
                 runtime_draw_rect(540 + d, 280 + d, 12, 12, 255, 50, 50);
                 runtime_draw_rect(640 - d, 280 + d, 12, 12, 255, 50, 50);
             }
+
+            // Draw "GAME OVER" text inside the window
+            draw_string(535, 230, "GAME OVER", 6, 255, 50, 50);
+
+            // Draw final score and high score
+            draw_string(480, 370, &format!("HI-SCORE:    {:06}", highscore), 3, 255, 220, 0);
+            draw_string(480, 395, &format!("FINAL SCORE: {:06}", score), 3, 0, 220, 255);
             
             let pulse_color = if (animation_time.sin() * 5.0) as i32 % 2 == 0 { 200 } else { 50 };
             runtime_draw_rect(500, 440, 280, 20, 50, pulse_color, 50);
+
+            // Draw pulsing restart instructions inside the pulsing rect
+            draw_string(508, 442, "PRESS ENTER TO RESTART", 3, 255, 255, 255);
         }
 
         runtime_present();
         sleep(Duration::from_millis(16));
     }
 
+    save_highscore(highscore);
     println!("=== レトロアドベンチャー シャットダウン ===");
     runtime_shutdown();
     println!("=== レトロアドベンチャー 終了 ===");
