@@ -1,5 +1,6 @@
 {
   "name": "SaruOS サンプルゲーム",
+  "name_en": "SARUOS SAMPLE GAME",
   "exec": "sample_game",
   "resolution": "1280x720",
   "controller_required": true,

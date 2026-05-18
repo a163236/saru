@@ -13,6 +13,8 @@ use runtime::{
 #[derive(Debug, Deserialize)]
 struct GameMeta {
     name: String,
+    #[serde(default)]
+    name_en: String,
     exec: String,
     resolution: String,
     controller_required: bool,
@@ -85,6 +87,239 @@ fn launch_game(game: &GameInfo) {
     runtime_init();
     println!("=== ランチャーUIに復帰しました ===");
 }
+
+// 🔠 レトロゲーム風の3x5ピクセルフォントを描画する関数
+fn draw_char(x: i32, y: i32, c: char, pixel_size: i32, r: u8, g: u8, b: u8) {
+    let pattern = match c {
+        '0' => "###\
+                #.#\
+                #.#\
+                #.#\
+                ###",
+        '1' => "..#\
+                ..#\
+                ..#\
+                ..#\
+                ..#",
+        '2' => "###\
+                ..#\
+                ###\
+                #..\
+                ###",
+        '3' => "###\
+                ..#\
+                ###\
+                ..#\
+                ###",
+        '4' => "#.#\
+                #.#\
+                ###\
+                ..#\
+                ..#",
+        '5' => "###\
+                #..\
+                ###\
+                ..#\
+                ###",
+        '6' => "###\
+                #..\
+                ###\
+                #.#\
+                ###",
+        '7' => "###\
+                ..#\
+                ..#\
+                ..#\
+                ..#",
+        '8' => "###\
+                #.#\
+                ###\
+                #.#\
+                ###",
+        '9' => "###\
+                #.#\
+                ###\
+                ..#\
+                ###",
+        'A' => "###\
+                #.#\
+                ###\
+                #.#\
+                #.#",
+        'B' => "###\
+                #.#\
+                ##.\
+                #.#\
+                ###",
+        'C' => "###\
+                #..\
+                #..\
+                #..\
+                ###",
+        'D' => "##.\
+                #.#\
+                #.#\
+                #.#\
+                ##.",
+        'E' => "###\
+                #..\
+                ###\
+                #..\
+                ###",
+        'F' => "###\
+                #..\
+                ###\
+                #..\
+                #..",
+        'G' => "###\
+                #..\
+                #.#\
+                #.#\
+                ###",
+        'H' => "#.#\
+                #.#\
+                ###\
+                #.#\
+                #.#",
+        'I' => "###\
+                .#.\
+                .#.\
+                .#.\
+                ###",
+        'J' => "..#\
+                ..#\
+                ..#\
+                #.#\
+                ###",
+        'K' => "#.#\
+                #.#\
+                ##.\
+                #.#\
+                #.#",
+        'L' => "#..\
+                #..\
+                #..\
+                #..\
+                ###",
+        'M' => "###\
+                ###\
+                #.#\
+                #.#\
+                #.#",
+        'N' => "#.#\
+                ###\
+                ###\
+                #.#\
+                #.#",
+        'O' => "###\
+                #.#\
+                #.#\
+                #.#\
+                ###",
+        'P' => "###\
+                #.#\
+                ###\
+                #..\
+                #..",
+        'Q' => "###\
+                #.#\
+                #.#\
+                ###\
+                ..#",
+        'R' => "###\
+                #.#\
+                ###\
+                #.#\
+                #.#",
+        'S' => "###\
+                #..\
+                ###\
+                ..#\
+                ###",
+        'T' => "###\
+                .#.\
+                .#.\
+                .#.\
+                .#.",
+        'U' => "#.#\
+                #.#\
+                #.#\
+                #.#\
+                ###",
+        'V' => "#.#\
+                #.#\
+                #.#\
+                #.#\
+                .#.",
+        'W' => "#.#\
+                #.#\
+                #.#\
+                ###\
+                ###",
+        'X' => "#.#\
+                #.#\
+                .#.\
+                #.#\
+                #.#",
+        'Y' => "#.#\
+                #.#\
+                ###\
+                ..#\
+                ..#",
+        'Z' => "###\
+                ..#\
+                .#.\
+                #..\
+                ###",
+        ':' => "...\
+                .#.\
+                ...\
+                .#.\
+                ...",
+        '-' => "...\
+                ...\
+                ###\
+                ...\
+                ...",
+        '.' => "...\
+                ...\
+                ...\
+                ...\
+                .#.",
+        ' ' => "...\
+                ...\
+                ...\
+                ...\
+                ...",
+        _ =>   "###\
+                #.#\
+                ###\
+                #.#\
+                #.#",
+    };
+
+    for (idx, ch) in pattern.chars().enumerate() {
+        if ch == '#' {
+            let px = idx % 3;
+            let py = idx / 3;
+            runtime_draw_rect(
+                x + px as i32 * pixel_size,
+                y + py as i32 * pixel_size,
+                pixel_size as u32,
+                pixel_size as u32,
+                r, g, b
+            );
+        }
+    }
+}
+
+fn draw_string(mut x: i32, y: i32, text: &str, pixel_size: i32, r: u8, g: u8, b: u8) {
+    for c in text.to_uppercase().chars() {
+        draw_char(x, y, c, pixel_size, r, g, b);
+        x += 4 * pixel_size;
+    }
+}
+
 
 // 🎮 コントローラのピクセルアートを描画する関数
 fn draw_controller_icon(x: i32, y: i32, is_selected: bool) {
@@ -200,9 +435,9 @@ fn main() {
         
         // ヘッダー内のロゴマーク (プレミアムネオンオレンジ)
         runtime_draw_rect(40, 25, 40, 40, 255, 120, 0);
-        // 白のラインとシアンのアクセント
-        runtime_draw_rect(95, 32, 220, 16, 240, 240, 245);
-        runtime_draw_rect(95, 52, 100, 6, 0, 220, 255);
+        // ロゴテキストとサブタイトル
+        draw_string(95, 22, "SARU OS", 4, 240, 240, 245);
+        draw_string(95, 52, "GAME PLATFORM", 2, 0, 220, 255);
 
         // 2. ゲームリストエリアの描画
         // 脈動計算： -3 から +3 ピクセル
@@ -237,17 +472,23 @@ fn main() {
                 draw_spaceship_icon(icon_x, icon_y, i == selected_index);
             }
             
-            // テキスト部分を模した美しいレイアウト（長さの異なるバーでタイトルとバージョンを表現）
+            // ゲームタイトルとバージョンを描画
             let text_x = if i == selected_index { 180 - pulse } else { 180 };
-            
-            // ゲームタイトルを模したメインバー
-            if i == selected_index {
-                runtime_draw_rect(text_x, item_y + 30, 450, 20, 255, 255, 255);
-                // バージョンラベルを模したイエローのミニバー
-                runtime_draw_rect(text_x, item_y + 60, 100, 12, 255, 220, 0);
+            let title = if !game.meta.name_en.is_empty() {
+                &game.meta.name_en
             } else {
-                runtime_draw_rect(text_x, item_y + 30, 380, 18, 180, 185, 190);
-                runtime_draw_rect(text_x, item_y + 58, 80, 10, 130, 135, 140);
+                &game.meta.exec
+            };
+            let version_str = format!("V{}", game.meta.version);
+            
+            if i == selected_index {
+                // 選択中：白の大きなタイトルと黄色のバージョン表記
+                draw_string(text_x, item_y + 20, title, 4, 255, 255, 255);
+                draw_string(text_x, item_y + 60, &version_str, 2, 255, 220, 0);
+            } else {
+                // 非選択中：落ち着いたグレーのタイトルとバージョン表記
+                draw_string(text_x, item_y + 22, title, 3, 180, 185, 190);
+                draw_string(text_x, item_y + 58, &version_str, 2, 130, 135, 140);
             }
         }
 
@@ -257,15 +498,18 @@ fn main() {
 
         // ガイド [↑↓] 選択 (シアン)
         runtime_draw_rect(50, 660, 65, 30, 0, 180, 255);
-        runtime_draw_rect(130, 667, 100, 16, 200, 205, 210);
+        draw_string(50 + (65 - 32)/2, 668, "MOVE", 2, 255, 255, 255);
+        draw_string(130, 667, "SELECT", 2, 200, 205, 210);
         
         // ガイド [A / Enter] 起動 (グリーン)
         runtime_draw_rect(280, 660, 120, 30, 0, 200, 100);
-        runtime_draw_rect(410, 667, 120, 16, 200, 205, 210);
+        draw_string(280 + (120 - 40)/2, 668, "ENTER", 2, 255, 255, 255);
+        draw_string(410, 667, "START GAME", 2, 200, 205, 210);
 
         // ガイド [ESC] 終了 (レッド)
         runtime_draw_rect(580, 660, 65, 30, 220, 60, 60);
-        runtime_draw_rect(660, 667, 80, 16, 200, 205, 210);
+        draw_string(580 + (65 - 24)/2, 668, "ESC", 2, 255, 255, 255);
+        draw_string(660, 667, "QUIT", 2, 200, 205, 210);
 
         runtime_present();
 
