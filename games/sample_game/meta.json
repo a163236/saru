@@ -1,8 +1,9 @@
 {
-  "name": "SaruOS サンプルゲーム",
-  "name_en": "SARUOS SAMPLE GAME",
+  "name": "SARUOS SAMPLE GAME (SAMPLE)",
+  "name_en": "SARUOS SAMPLE GAME (SAMPLE)",
   "exec": "sample_game",
   "resolution": "1280x720",
   "controller_required": true,
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "icon": "controller"
 }

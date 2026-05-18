@@ -1,7 +1,8 @@
 use std::sync::Mutex;
+use std::sync::OnceLock;
 use std::time::Instant;
 
-// SDL3のアイテムをインポート
+use fontdue::{Font, FontSettings};
 use sdl3::Sdl;
 use sdl3::video::Window;
 use sdl3::render::Canvas;
@@ -36,6 +37,35 @@ unsafe impl Send for RuntimeContext {}
 unsafe impl Sync for RuntimeContext {}
 
 static RUNTIME: Mutex<Option<RuntimeContext>> = Mutex::new(None);
+static JAPANESE_FONT: OnceLock<Font> = OnceLock::new();
+
+fn load_japanese_font() -> Font {
+    let paths = [
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/noto/NotoSansJP-Regular.otf",
+        "/mnt/c/Windows/Fonts/NotoSansJP-VF.ttf",
+        "/mnt/c/Windows/Fonts/meiryo.ttc",
+        "/mnt/c/Windows/Fonts/YuGothR.ttc",
+    ];
+
+    for path in paths {
+        if let Ok(data) = std::fs::read(path) {
+            if let Ok(font) = Font::from_bytes(data, FontSettings::default()) {
+                println!("SaruOS Runtime: loaded Japanese font from {}", path);
+                return font;
+            }
+        }
+    }
+
+    let embedded = include_bytes!("../fonts/NotoSansJP-VF.ttf");
+    Font::from_bytes(embedded.as_slice(), FontSettings::default())
+        .expect("Failed to load embedded Japanese font")
+}
+
+fn japanese_font() -> &'static Font {
+    JAPANESE_FONT.get_or_init(load_japanese_font)
+}
 
 #[no_mangle]
 pub extern "C" fn runtime_init() {
@@ -43,18 +73,20 @@ pub extern "C" fn runtime_init() {
     if runtime.is_some() {
         return;
     }
-    
+
+    let _ = japanese_font();
+
     let sdl = sdl3::init().unwrap();
     let video = sdl.video().unwrap();
-    
+
     let window = video.window("SaruOS Game Window", 1280, 720)
         .position_centered()
         .build()
         .unwrap();
-        
+
     let canvas = window.into_canvas();
     let event_pump = sdl.event_pump().unwrap();
-    
+
     *runtime = Some(RuntimeContext {
         sdl,
         canvas,
@@ -73,7 +105,7 @@ pub extern "C" fn runtime_init() {
             quit: false,
         },
     });
-    
+
     println!("SaruOS Runtime initialized with SDL3 graphics & input!");
 }
 
@@ -101,7 +133,6 @@ pub extern "C" fn runtime_get_delta_time() -> f32 {
 pub extern "C" fn runtime_get_input() -> InputState {
     let mut runtime = RUNTIME.lock().unwrap();
     if let Some(ref mut rt) = *runtime {
-        // quit および start（Escapeでの終了要求）は毎フレームクリアする（トリガー型）
         rt.input.quit = false;
         rt.input.start = false;
 
@@ -110,7 +141,6 @@ pub extern "C" fn runtime_get_input() -> InputState {
         while let Some(event) = rt.event_pump.poll_event() {
             match event {
                 Event::Quit { .. } => {
-                    // 起動直後の誤判定を防ぐため、0.2秒以上経過している場合のみ終了を受け付ける
                     if elapsed > 0.2 {
                         rt.input.quit = true;
                     }
@@ -139,10 +169,7 @@ pub extern "C" fn runtime_get_input() -> InputState {
                         Keycode::Right | Keycode::D => rt.input.right = false,
                         Keycode::Return | Keycode::J => rt.input.action_a = false,
                         Keycode::Space | Keycode::K => rt.input.action_b = false,
-                        Keycode::Escape => {
-                            // キーが離された時は常にリセット
-                            rt.input.start = false;
-                        }
+                        Keycode::Escape => rt.input.start = false,
                         _ => {}
                     }
                 }
@@ -168,7 +195,7 @@ pub extern "C" fn runtime_get_input() -> InputState {
 pub extern "C" fn runtime_clear() {
     let mut runtime = RUNTIME.lock().unwrap();
     if let Some(ref mut rt) = *runtime {
-        rt.canvas.set_draw_color(sdl3::pixels::Color::RGB(10, 12, 18)); // 高級感のあるダークネイビー背景
+        rt.canvas.set_draw_color(sdl3::pixels::Color::RGB(10, 12, 18));
         rt.canvas.clear();
     }
 }
@@ -191,3 +218,44 @@ pub extern "C" fn runtime_draw_rect(x: i32, y: i32, w: u32, h: u32, r: u8, g: u8
     }
 }
 
+#[no_mangle]
+pub extern "C" fn runtime_draw_text(x: i32, y: i32, text: &str, size: f32, r: u8, g: u8, b: u8) {
+    let font = japanese_font();
+    let mut runtime = RUNTIME.lock().unwrap();
+    let Some(ref mut rt) = *runtime else { return; };
+
+    rt.canvas.set_draw_color(sdl3::pixels::Color::RGB(r, g, b));
+
+    // y is the top of the line box; anchor all glyphs to one shared baseline.
+    let ascent = font
+        .horizontal_line_metrics(size)
+        .map(|m| m.ascent)
+        .unwrap_or(size * 0.85);
+    let baseline_y = y as f32 + ascent;
+    let mut cursor_x = x as f32;
+
+    for ch in text.chars() {
+        let (metrics, bitmap) = font.rasterize(ch, size);
+        let width = metrics.width;
+        if width == 0 {
+            cursor_x += metrics.advance_width;
+            continue;
+        }
+
+        // fontdue: ymin is the bottom edge offset from baseline (y-down screen coords).
+        let glyph_top = baseline_y - metrics.height as f32 - metrics.ymin as f32;
+
+        for (idx, coverage) in bitmap.iter().enumerate() {
+            if *coverage < 48 {
+                continue;
+            }
+            let gx = idx % width;
+            let gy = idx / width;
+            let px = cursor_x + metrics.xmin as f32 + gx as f32;
+            let py = glyph_top + gy as f32;
+            let rect = sdl3::rect::Rect::new(px as i32, py as i32, 1, 1);
+            let _ = rt.canvas.fill_rect(rect);
+        }
+        cursor_x += metrics.advance_width;
+    }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "KOSHIEN SUCCESS",
+  "name_en": "KOSHIEN SUCCESS",
+  "exec": "baseball_training",
+  "resolution": "1280x720",
+  "controller_required": true,
+  "version": "1.0.0",
+  "icon": "baseball"
+}

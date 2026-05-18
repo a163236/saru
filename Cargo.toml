@@ -4,6 +4,7 @@ members = [
     "launcher",
     "games/sample_game",
     "games/retro_adventure",
+    "games/baseball_training",
 ]
 resolver = "2"
 
